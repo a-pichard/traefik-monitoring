@@ -1,0 +1,12 @@
+http:
+  routers:
+    prometheus_https:
+      service: "prometheus-traefik@docker"
+      rule: "Host(`prometheus.domain.com`)"
+      entryPoints:
+        - "web"
+        - "websecure"
+      tls:
+        certResolver: "https-resolver"
+      middlewares:
+        - "promauth"

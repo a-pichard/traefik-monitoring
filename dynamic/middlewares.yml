@@ -1,0 +1,10 @@
+http:
+  middlewares:
+    traefikauth:
+      basicAuth:
+        users:
+          - "user:hashed-password"
+    promauth:
+      basicAuth:
+        users:
+          - "user:hashed-password"

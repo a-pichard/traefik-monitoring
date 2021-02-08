@@ -1,0 +1,44 @@
+log:
+  level: DEBUG
+
+pilot:
+    token: "traefik-token"
+
+providers:
+  docker:
+    exposedbydefault: false
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: :80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: :443
+  metrics:
+    address: :8080
+
+certificatesResolvers:
+  https-resolver:
+    acme:
+      httpChallenge:
+        entryPoint: web
+      email: "a@a.com"
+      storage: /etc/traefik/acme/acme.json
+      caserver: https://acme-v02.api.letsencrypt.org/directory
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    manualRouting: true

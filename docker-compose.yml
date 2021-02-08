@@ -1,0 +1,92 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik:v2.4
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./static/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./acme:/etc/traefik/acme
+      - ./dynamic:/etc/traefik/dynamic:ro
+    labels:
+      - "traefik.enable=true"
+    networks:
+      - server-tier
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    depends_on:
+      - traefik
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - server-tier
+  prometheus:
+    image: prom/prometheus:v2.1.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    links:
+      - cadvisor:cadvisor
+    depends_on:
+      - traefik
+      - cadvisor
+    networks:
+      - server-tier
+    restart: always
+    labels:
+      - "traefik.enable=true"
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - traefik
+      - prometheus
+    networks:
+      - server-tier
+    restart: always
+    labels:
+      - "traefik.enable=true"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    depends_on:
+      - traefik
+    restart: always
+    networks:
+      - server-tier
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+
+networks:
+  server-tier:
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
